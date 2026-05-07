@@ -213,6 +213,46 @@ class TestBranchWorkspaceCreate:
 
         branch_ensure.assert_called_once_with('abra/demo', 'financial-planning-intake')
 
+    def test_create_uses_explicit_base_branch_when_provided(self, tmp_path):
+        repo_root = tmp_path / 'repo'
+        repo_root.mkdir()
+        repo = GitRepo(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
+        workspace = BranchWorkspace('demo', repo=repo)
+
+        with (
+            patch.object(GitRepo, 'ref_exists', return_value=True) as ref_exists,
+            patch.object(workspace.hooks.__class__, 'hook_tasks_clean_ensure') as hook_check,
+            patch.object(GitRepo, 'branch_ensure') as branch_ensure,
+            patch.object(BranchWorkspace, 'worktree_ensure') as worktree_ensure,
+            patch.object(BranchWorkspace, 'branch_rebase_ensure') as rebase_ensure,
+            patch.object(workspace.hooks.__class__, 'trust_worktree') as trust_worktree,
+            patch.object(StateStore, 'slot_allocate', return_value=1) as slot_allocate,
+            patch.object(BranchWorkspace, 'hook_run', return_value=False),
+        ):
+            workspace.create(base_branch='release/1.2')
+
+        ref_exists.assert_called_once_with('release/1.2')
+        hook_check.assert_called_once_with()
+        branch_ensure.assert_called_once_with('abra/demo', 'release/1.2')
+        worktree_ensure.assert_called_once_with()
+        rebase_ensure.assert_called_once_with()
+        trust_worktree.assert_called_once_with(workspace.worktree_path)
+        slot_allocate.assert_called_once_with('demo', source_branch='release/1.2')
+
+    def test_create_rejects_missing_explicit_base_branch(self, tmp_path):
+        repo_root = tmp_path / 'repo'
+        repo_root.mkdir()
+        repo = GitRepo(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
+        workspace = BranchWorkspace('demo', repo=repo)
+
+        with (
+            patch.object(GitRepo, 'ref_exists', return_value=False) as ref_exists,
+            pytest.raises(click.ClickException, match='Base branch missing-branch does not exist'),
+        ):
+            workspace.create(base_branch='missing-branch')
+
+        ref_exists.assert_called_once_with('missing-branch')
+
     def test_rebase_uses_abra_branch_upstream(self, tmp_path):
         repo_root = tmp_path / 'repo'
         repo_root.mkdir()

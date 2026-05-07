@@ -19,6 +19,25 @@ class TestMain:
         assert 'remove' in result.output
         assert 'cleanup' not in result.output
 
+    def test_create_passes_base_branch(self, tmp_path):
+        runner = CliRunner()
+        repo_root = tmp_path / 'repo'
+        repo_root.mkdir()
+        repo = GitRepo(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
+
+        with (
+            patch.object(GitRepo, 'current', return_value=repo),
+            patch.object(BranchWorkspace, 'create', return_value=2) as create,
+        ):
+            result = runner.invoke(main, ['create', 'demo', '--base-branch', 'release/1.2'])
+
+        assert result.exit_code == 0
+        create.assert_called_once_with(base_branch='release/1.2')
+        assert (
+            result.output
+            == f'Branch demo is ready at {repo.config.worktree_path("demo")} (slot 2).\n'
+        )
+
     def test_merge_from_reports_success(self, tmp_path):
         runner = CliRunner()
         repo_root = tmp_path / 'repo'

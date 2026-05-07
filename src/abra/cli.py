@@ -44,7 +44,13 @@ def main() -> None:
 
 @main.command()
 @click.argument('ident')
-def create(ident: str) -> None:
+@click.option(
+    '--base-branch',
+    type=str,
+    default=None,
+    help='Base the new abra branch on this branch instead of the current branch.',
+)
+def create(ident: str, base_branch: str | None) -> None:
     """
     Create or reuse the branch worktree for IDENT.
 
@@ -53,7 +59,7 @@ def create(ident: str) -> None:
     """
 
     workspace = BranchWorkspace(ident, repo=GitRepo.current())
-    slot = workspace.create()
+    slot = workspace.create(base_branch=base_branch)
     click.echo(f'Branch {workspace.ident} is ready at {workspace.worktree_path} (slot {slot}).')
 
 

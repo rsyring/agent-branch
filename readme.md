@@ -9,7 +9,7 @@ Its main use case is multi-tree agentic development.
 
 ## Usage
 
-- `abra create <ident>`
+- `abra create <ident> [--base-branch]`
   - Creates a worktree next to the base repo named `<base-repo>.<ident>`
   - Creates a git branch for that worktree at `abra/<ident>`
   - Runs the `post-create` hook inside the new worktree repository

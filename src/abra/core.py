@@ -179,6 +179,15 @@ class BranchWorkspace:
     def source_branch_name(self) -> str:
         return self.repo.source_branch_current_ensure()
 
+    def create_source_branch_name(self, *, base_branch: str | None = None) -> str:
+        if base_branch is None:
+            return self.source_branch_name()
+
+        if self.repo.ref_exists(base_branch):
+            return base_branch
+
+        raise click.ClickException(f'Base branch {base_branch} does not exist.')
+
     def upstream_branch_name(self) -> str:
         if upstream_branch := self.repo.branch_upstream_name(self.branch_name):
             return upstream_branch
@@ -246,10 +255,10 @@ class BranchWorkspace:
         self.hooks.task_run(task_name, cwd=self.worktree_path, env=self.hook_env(slot=slot))
         return True
 
-    def create(self) -> int:
+    def create(self, *, base_branch: str | None = None) -> int:
         assert self.hooks is not None
         assert self.state is not None
-        source_branch = self.source_branch_name()
+        source_branch = self.create_source_branch_name(base_branch=base_branch)
         self.hooks.hook_tasks_clean_ensure()
         self.repo.branch_ensure(self.branch_name, source_branch)
         self.worktree_ensure()
