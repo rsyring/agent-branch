@@ -4,7 +4,8 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from abra.branch import BranchManager, BranchWorkspace
+from abra.core import BranchWorkspace, StateStore
+from abra.git import GitRepo
 
 
 def print_status(rows: list[dict[str, str | int]]) -> None:
@@ -51,7 +52,7 @@ def create(ident: str) -> None:
     branch `abra/demo` and the worktree `<repo-parent>/<repo-name>.demo`.
     """
 
-    workspace = BranchWorkspace(ident, manager=BranchManager.current())
+    workspace = BranchWorkspace(ident, repo=GitRepo.current())
     slot = workspace.create()
     click.echo(f'Branch {workspace.ident} is ready at {workspace.worktree_path} (slot {slot}).')
 
@@ -60,14 +61,17 @@ def create(ident: str) -> None:
 def status() -> None:
     """Show all active branch worktrees recorded in the state file."""
 
-    manager = BranchManager.current()
-    click.echo(f'State file: {manager.state_path}')
-    entries = manager.state_load()
+    repo = GitRepo.current()
+    state = StateStore(repo.config.state_path)
+    click.echo(f'State file: {repo.config.state_path}')
+    entries = state.load()
     if not entries:
         click.echo('No active branch worktrees found.')
         return
 
-    print_status([BranchWorkspace(entry.ident, manager=manager).status_row() for entry in entries])
+    print_status(
+        [BranchWorkspace(entry.ident, repo=repo, state=state).status_row() for entry in entries],
+    )
 
 
 @main.command()
@@ -79,7 +83,7 @@ def merge_from(ident: str) -> None:
     Run this from the branch you want to update from the abra branch.
     """
 
-    workspace = BranchWorkspace(ident, manager=BranchManager.current())
+    workspace = BranchWorkspace(ident, repo=GitRepo.current())
     target_branch = workspace.merge_from()
     click.echo(f'Merged {workspace.branch_name} into {target_branch}.')
 
@@ -100,5 +104,5 @@ def remove_(ident: str, force_: bool) -> None:
     By default this refuses to remove dirty or unmerged work. Use `--force` to override.
     """
 
-    BranchWorkspace(ident, manager=BranchManager.current()).remove(force=force_)
+    BranchWorkspace(ident, repo=GitRepo.current()).remove(force=force_)
     click.echo(f'Removed {ident}.')

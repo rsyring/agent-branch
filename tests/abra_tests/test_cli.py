@@ -2,8 +2,10 @@ from unittest.mock import patch
 
 from click.testing import CliRunner
 
-from abra.branch import BranchManager, BranchWorkspace, ProjectConfig
 from abra.cli import main
+from abra.config import ProjectConfig
+from abra.core import BranchWorkspace
+from abra.git import GitRepo
 
 
 class TestMain:
@@ -21,10 +23,10 @@ class TestMain:
         runner = CliRunner()
         repo_root = tmp_path / 'repo'
         repo_root.mkdir()
-        manager = BranchManager(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
+        repo = GitRepo(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
 
         with (
-            patch.object(BranchManager, 'current', return_value=manager),
+            patch.object(GitRepo, 'current', return_value=repo),
             patch.object(BranchWorkspace, 'merge_from', return_value='feature/demo') as merge_from,
         ):
             result = runner.invoke(main, ['merge-from', 'demo'])
@@ -37,10 +39,10 @@ class TestMain:
         runner = CliRunner()
         repo_root = tmp_path / 'repo'
         repo_root.mkdir()
-        manager = BranchManager(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
+        repo = GitRepo(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
 
         with (
-            patch.object(BranchManager, 'current', return_value=manager),
+            patch.object(GitRepo, 'current', return_value=repo),
             patch.object(BranchWorkspace, 'remove') as remove_,
         ):
             result = runner.invoke(main, ['remove', 'demo', '--force'])
