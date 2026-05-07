@@ -23,7 +23,7 @@ readme = 'readme.md'
 [dependency-groups]
 dev = [
     {include-group = "pytest"},
-    {include-group = "pre-commit"},
+    {include-group = "prek"},
     {include-group = "audit"},
     {include-group = "nox"},
     'click',
@@ -36,9 +36,8 @@ pytest = [
     'pytest-cov',
 ]
 # Used by nox
-pre-commit = [
-    'pre-commit',
-    'pre-commit-uv',
+prek = [
+    "prek>=0.3.10",
 ]
 # Used by nox
 audit = [

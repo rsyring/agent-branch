@@ -27,13 +27,18 @@ From zero to hero (passing tests that is):
 
    `uv sync`
 
-4. Configure pre-commit:
+4. Configure prek:
 
-   `pre-commit install`
+   `prek install`
 
 5. Run tests:
 
    `nox`
+
+
+### prek instead of pre-commit
+
+This project uses prek instead of pre-commit.
 
 
 ### Versions
