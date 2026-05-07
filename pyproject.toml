@@ -1,0 +1,50 @@
+[build-system]
+requires = [
+    'hatchling',
+    'hatch-regex-commit',
+]
+build-backend = 'hatchling.build'
+
+
+[project]
+name = 'AgentBranch'
+authors = [
+    {name = 'Randy Syring', email = 'randy@syrings.us'},
+]
+requires-python = '~=3.13.0'
+dynamic = ['version']
+readme = 'readme.md'
+
+
+[project.scripts]
+'abra' = 'abra.cli:main'
+
+
+[dependency-groups]
+dev = [
+    {include-group = "pytest"},
+    {include-group = "pre-commit"},
+    {include-group = "audit"},
+    {include-group = "nox"},
+    'click',
+    'hatch',
+    'ruff',
+]
+# Used by nox
+pytest = [
+    'pytest',
+    'pytest-cov',
+]
+# Used by nox
+pre-commit = [
+    'pre-commit',
+    'pre-commit-uv',
+]
+# Used by nox
+audit = [
+    'pip-audit',
+]
+# Used by CI
+nox = [
+    'nox',
+]

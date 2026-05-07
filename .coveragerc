@@ -1,0 +1,13 @@
+# .coveragerc to control coverage.py
+[run]
+branch = True
+omit =
+    src/abra/version.py
+
+source =
+    src/abra
+    tests/abra_tests
+
+
+[html]
+directory = tmp/coverage-html
