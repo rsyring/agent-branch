@@ -19,24 +19,24 @@ def print_status(rows: list[dict[str, str | int]]) -> None:
 @click.group()
 def main() -> None:
     """
-    Manage isolated git worktrees for branch-based agent or app workflows.
+    Manage isolated git worktrees for branch-based abra workflows.
 
-    It creates or reuses an `agent/<ident>` branch, creates or reuses a sibling worktree at
+    It creates or reuses an `abra/<ident>` branch, creates or reuses a sibling worktree at
     `<repo-parent>/<repo-name>.<ident>`, and allocates a reusable numeric slot stored in a state
     file next to the repo.
 
-    If the worktree defines `agent-branch-post-create` or `agent-branch-pre-cleanup` as mise
-    tasks, this CLI will run them inside the worktree. Those hooks receive `AGENT_BRANCH_IDENT`,
-    `AGENT_BRANCH_BRANCH`, and `AGENT_BRANCH_SLOT`.
+    If the worktree defines `abra-post-create` or `abra-pre-remove` as mise tasks, this CLI will
+    run them inside the worktree. Those hooks receive `ABRA_IDENT`, `ABRA_BRANCH`, and
+    `ABRA_SLOT`.
 
     This tool intentionally stays app-agnostic. Hook tasks can translate the slot into
     app-specific ports, containers, databases, or other local resources.
 
     Use `create IDENT` to prepare a worktree and allocate a slot. If the worktree defines a mise
-    task named `agent-branch-post-create`, it will run inside the worktree with the
-    `AGENT_BRANCH_*` environment variables listed above.
+    task named `abra-post-create`, it will run inside the worktree with the `ABRA_*`
+    environment variables listed above.
 
-    Use `cleanup IDENT` to run the optional `agent-branch-pre-cleanup` hook, remove the worktree,
+    Use `remove IDENT` to run the optional `abra-pre-remove` hook, remove the worktree and branch,
     and release the slot so it can be reused later.
     """
 
@@ -48,7 +48,7 @@ def create(ident: str) -> None:
     Create or reuse the branch worktree for IDENT.
 
     IDENT becomes the branch suffix and worktree suffix. For example, `create demo` uses the
-    branch `agent/demo` and the worktree `<repo-parent>/<repo-name>.demo`.
+    branch `abra/demo` and the worktree `<repo-parent>/<repo-name>.demo`.
     """
 
     workspace = BranchWorkspace(ident, manager=BranchManager.current())
@@ -74,9 +74,9 @@ def status() -> None:
 @click.argument('ident')
 def merge_from(ident: str) -> None:
     """
-    Fast-forward merge agent/IDENT into the current non-agent branch.
+    Fast-forward merge abra/IDENT into the current non-abra branch.
 
-    Run this from the branch you want to update from the agent branch.
+    Run this from the branch you want to update from the abra branch.
     """
 
     workspace = BranchWorkspace(ident, manager=BranchManager.current())
@@ -84,21 +84,21 @@ def merge_from(ident: str) -> None:
     click.echo(f'Merged {workspace.branch_name} into {target_branch}.')
 
 
-@main.command()
+@main.command(name='remove')
 @click.argument('ident')
 @click.option(
-    '--branch',
-    'delete_branch',
+    '--force',
+    'force_',
     is_flag=True,
     default=False,
-    help='Delete the git branch too.',
+    help='Skip remove safety guards and delete the worktree and branch anyway.',
 )
-def cleanup(ident: str, delete_branch: bool) -> None:
+def remove_(ident: str, force_: bool) -> None:
     """
-    Clean up the worktree for IDENT and release its slot.
+    Remove the worktree for IDENT, delete the branch, and release its slot.
 
-    Use `--branch` to delete the git branch as part of cleanup.
+    By default this refuses to remove dirty or unmerged work. Use `--force` to override.
     """
 
-    BranchWorkspace(ident, manager=BranchManager.current()).cleanup(delete_branch=delete_branch)
-    click.echo(f'Cleaned up {ident}.')
+    BranchWorkspace(ident, manager=BranchManager.current()).remove(force=force_)
+    click.echo(f'Removed {ident}.')

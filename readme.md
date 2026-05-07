@@ -1,56 +1,61 @@
 # AgentBranch
+
 [![nox](https://github.com/rsyring/agent-branch/actions/workflows/nox.yaml/badge.svg)](https://github.com/rsyring/agent-branch/actions/workflows/nox.yaml)
 
-Agent branch (`abra`) is a cli tool for simplifying the creation of git worktrees for branch based
+`abra` is a CLI tool for simplifying the creation of git worktrees for branch-based
 parallel development.
 
-It's main use case is multi-tree agentic development.
+Its main use case is multi-tree agentic development.
 
 ## Usage
 
 - `abra create <ident>`
-   - Creates a worktree next to the base repo named `<base-repo>.<ident>`
-   - Creates a git branch for that worktree at `agent/<ident>`
-   - Runs `post-create` hook inside the new worktree repo
-- `abra status`: shows existing abra repos
+  - Creates a worktree next to the base repo named `<base-repo>.<ident>`
+  - Creates a git branch for that worktree at `abra/<ident>`
+  - Runs the `post-create` hook inside the new worktree repository
+- `abra status`: shows existing abra worktrees
 - `abra merge-from <ident>`
-   - Does a fast-forward merge on branch `agent/<ident>`
-   - Will only run from non-abra repos
-- `abra cleanup demo [--branch]`
-   - Delete the worktree and, optionally, the branch
+  - Fast-forwards the current branch from `abra/<ident>`
+  - Runs only from non-abra branches
+- `abra remove <ident> [--force]`
+  - Does not remove uncommitted or unmerged changes without `--force`
+  - Runs the `pre-remove` hook
+  - Deletes the worktree repository and branch
 
 ## Hooks
 
-Abra uses `mise` tasks as hooks to support customizing the worktree repo config and setup /
-teardown.
+`abra` uses `mise` tasks as hooks to support customizing worktree repository
+configuration, setup, and teardown.
 
-- `agent-branch-post-create`: ran after create in the worktree repo
-- `agent-branch-pre-cleanup`: ran before cleanup in the worktree repo
+- `abra-post-create`: runs after create in the worktree repo
+- `abra-pre-remove`: runs before remove in the worktree repo
 
 When hooks run, `abra` provides these environment variables to the tasks:
 
-- `AGENT_BRANCH_IDENT`: the `<ident>` provided to `create`
-- `AGENT_BRANCH_BRANCH`: the full git branch, i.e. `agent/<ident>`
-- `AGENT_BRANCH_SLOT`: an integer that will be unique among all existing abra worktrees
+- `ABRA_IDENT`: the `<ident>` provided to `create`
+- `ABRA_BRANCH`: the full git branch, i.e. `abra/<ident>`
+- `ABRA_SLOT`: an integer that will be unique among all existing abra worktrees
 
-`abra` intentionally stays app-agnostic. Hook tasks SHOULD translate the slot into app-specific
-ports, containers, databases, or other local resources to avoid collisions.
+`abra` intentionally stays app-agnostic. Hook tasks should translate the slot into
+app-specific ports, containers, databases, or other local resources to avoid collisions.
+
+Example hook scripts adapted from the skills test source repo are available in
+`examples/`.
 
 ## Dev
 
-
 ### Copier Template
 
-Project structure and tooling mostly derives from the [Coppy](https://github.com/level12/coppy),
-see its documentation for context and additional instructions.
+Project structure and tooling mostly derive from the
+[Coppy](https://github.com/level12/coppy), see its documentation for context and
+additional instructions.
 
 This project can be updated from the upstream repo, see
 [Updating a Project](https://github.com/level12/coppy?tab=readme-ov-file#template-updates).
 
-
 ### Project Setup
 
-From zero to hero (passing tests that is):
+From zero to passing tests:
 
 1. Ensure [host dependencies](https://github.com/level12/coppy/wiki/Mise) are installed
 
@@ -58,7 +63,8 @@ From zero to hero (passing tests that is):
 
    `docker compose up -d`
 
-3. Sync [project](https://docs.astral.sh/uv/concepts/projects/) virtualenv w/ lock file:
+3. Sync the [project](https://docs.astral.sh/uv/concepts/projects/) virtual environment
+   with the lock file:
 
    `uv sync`
 
@@ -70,18 +76,15 @@ From zero to hero (passing tests that is):
 
    `nox`
 
-
 ### prek instead of pre-commit
 
 This project uses prek instead of pre-commit.
 
-
 ### Versions
 
-Versions are date based.  A `bump` action exists to help manage versions:
+Versions are date-based. A `bump` action exists to help manage versions:
 
 ```shell
-
   # Show current version
   mise bump --show
 

@@ -15,9 +15,9 @@ import subprocess
 import click
 
 
-DEFAULT_BRANCH_PREFIX = 'agent/'
+DEFAULT_BRANCH_PREFIX = 'abra/'
 DEFAULT_WORKTREE_TEMPLATE = '{project_base}.{ident}'
-DEFAULT_HOOK_EVENTS = ('post-create', 'pre-cleanup')
+DEFAULT_HOOK_EVENTS = ('post-create', 'pre-remove')
 
 
 class CalledProcessError(subprocess.CalledProcessError):
@@ -70,20 +70,19 @@ def sub_run(
 
 def slugify_name(value: str) -> str:
     slug = re.sub(r'[^A-Za-z0-9_.-]+', '-', value).strip('-')
-    return slug or 'agent'
+    return slug or 'abra'
 
 
 def default_state_path(repo_root: Path, project_base: str) -> Path:
-    project_slug = slugify_name(project_base)
-    return (repo_root.parent / f'{project_slug}-agent-branch-state.json').resolve()
+    return (repo_root / 'abra-state.json').resolve()
 
 
 def hook_task_name(event: str) -> str:
     if event == 'post-create':
-        return 'agent-branch-post-create'
-    if event == 'pre-cleanup':
-        return 'agent-branch-pre-cleanup'
-    return f'agent-branch-on-{event}'
+        return 'abra-post-create'
+    if event == 'pre-remove':
+        return 'abra-pre-remove'
+    return f'abra-on-{event}'
 
 
 def find_repo_root(start: Path | None = None) -> Path:
@@ -151,6 +150,7 @@ class ProjectConfig:
 class StateEntry:
     ident: str
     slot: int
+    source_branch: str | None = None
 
 
 @dataclass(frozen=True)
@@ -218,11 +218,18 @@ class BranchManager:
                     return entry
         return None
 
-    def slot_allocate(self, ident: str) -> int:
+    def slot_allocate(self, ident: str, *, source_branch: str | None = None) -> int:
         with self.state_locked_file() as state_file:
             entries = self.state_load_locked(state_file)
-            for entry in entries:
+            for idx, entry in enumerate(entries):
                 if entry.ident == ident:
+                    if entry.source_branch is None and source_branch is not None:
+                        entries[idx] = StateEntry(
+                            ident=entry.ident,
+                            slot=entry.slot,
+                            source_branch=source_branch,
+                        )
+                        self.state_save_locked(state_file, entries)
                     return entry.slot
 
             used_slots = {entry.slot for entry in entries}
@@ -230,7 +237,7 @@ class BranchManager:
             while slot in used_slots:
                 slot += 1
 
-            entries.append(StateEntry(ident=ident, slot=slot))
+            entries.append(StateEntry(ident=ident, slot=slot, source_branch=source_branch))
             self.state_save_locked(state_file, entries)
             return slot
 
@@ -292,8 +299,21 @@ class BranchManager:
     def branch_upstream_set(self, branch_name: str, start_point: str) -> None:
         sub_run('git', 'branch', '--set-upstream-to', start_point, branch_name, cwd=self.repo_root)
 
-    def branch_delete(self, branch_name: str) -> None:
-        sub_run('git', 'branch', '--delete', '--force', branch_name, cwd=self.repo_root)
+    def ref_exists(self, ref_name: str) -> bool:
+        result = sub_run(
+            'git',
+            'rev-parse',
+            '--verify',
+            '--quiet',
+            f'{ref_name}^{{commit}}',
+            cwd=self.repo_root,
+            returns=(0, 1),
+        )
+        return result.returncode == 0
+
+    def branch_delete(self, branch_name: str, *, force: bool = False) -> None:
+        delete_arg = '--force' if force else '--delete'
+        sub_run('git', 'branch', delete_arg, branch_name, cwd=self.repo_root)
 
     def branch_rebase_needed(self, branch_name: str, upstream_branch: str) -> bool:
         result = sub_run(
@@ -307,6 +327,21 @@ class BranchManager:
         )
         return result.returncode == 1
 
+    def branch_merged_into(self, branch_name: str, target_ref: str) -> bool:
+        if not self.ref_exists(branch_name) or not self.ref_exists(target_ref):
+            return False
+
+        result = sub_run(
+            'git',
+            'merge-base',
+            '--is-ancestor',
+            branch_name,
+            target_ref,
+            cwd=self.repo_root,
+            returns=(0, 1),
+        )
+        return result.returncode == 0
+
     def worktree_clean(self, worktree_path: Path) -> bool:
         result = sub_run('git', 'status', '--porcelain', cwd=worktree_path, capture=True)
         return not result.stdout.strip()
@@ -319,18 +354,18 @@ class BranchManager:
         return result.stdout.strip()
 
     def source_branch_current_ensure(self) -> str:
-        current_branch = self.non_agent_branch_current_ensure()
+        current_branch = self.non_abra_branch_current_ensure()
         if current_branch != 'detached HEAD':
             return current_branch
         raise click.ClickException('This command must be run from a branch, not detached HEAD.')
 
-    def non_agent_branch_current_ensure(self) -> str:
+    def non_abra_branch_current_ensure(self) -> str:
         current_branch = self.current_branch_name()
         if DEFAULT_BRANCH_PREFIX not in current_branch:
             return current_branch or 'detached HEAD'
 
         raise click.ClickException(
-            f'This command cannot be run from an agent branch ({current_branch}).',
+            f'This command cannot be run from an abra branch ({current_branch}).',
         )
 
     def branch_merge_ff_only(self, branch_name: str) -> None:
@@ -339,8 +374,12 @@ class BranchManager:
     def worktree_add(self, worktree_path: Path, branch_name: str) -> None:
         sub_run('git', 'worktree', 'add', worktree_path, branch_name, cwd=self.repo_root)
 
-    def worktree_remove(self, worktree_path: Path) -> None:
-        sub_run('git', 'worktree', 'remove', '--force', worktree_path, cwd=self.repo_root)
+    def worktree_remove(self, worktree_path: Path, *, force: bool = False) -> None:
+        cmd = ['git', 'worktree', 'remove']
+        if force:
+            cmd.append('--force')
+        cmd.append(worktree_path)
+        sub_run(*cmd, cwd=self.repo_root)
 
     def worktree_prune(self) -> None:
         sub_run('git', 'worktree', 'prune', '--expire', 'now', cwd=self.repo_root)
@@ -443,6 +482,11 @@ class BranchWorkspace:
             return entry.slot
         return None
 
+    def source_branch_recorded(self) -> str | None:
+        if entry := self.state_entry():
+            return entry.source_branch
+        return None
+
     def branch_exists(self) -> bool:
         return self.manager.branch_exists(self.branch_name)
 
@@ -497,11 +541,11 @@ class BranchWorkspace:
 
     def hook_env(self, *, slot: int | None = None) -> dict[str, str]:
         env = {
-            'AGENT_BRANCH_IDENT': self.ident,
-            'AGENT_BRANCH_BRANCH': self.branch_name,
+            'ABRA_IDENT': self.ident,
+            'ABRA_BRANCH': self.branch_name,
         }
         if slot is not None:
-            env['AGENT_BRANCH_SLOT'] = str(slot)
+            env['ABRA_SLOT'] = str(slot)
         return env
 
     def hook_run(self, event: str, *, slot: int | None = None) -> bool:
@@ -517,36 +561,70 @@ class BranchWorkspace:
         return True
 
     def create(self) -> int:
+        source_branch = self.source_branch_name()
         self.manager.hook_tasks_clean_ensure()
-        self.branch_ensure()
+        self.manager.branch_ensure(self.branch_name, source_branch)
         self.worktree_ensure()
         self.branch_rebase_ensure()
         self.manager.trust_worktree(self.worktree_path)
-        slot = self.manager.slot_allocate(self.ident)
+        slot = self.manager.slot_allocate(self.ident, source_branch=source_branch)
         self.hook_run('post-create', slot=slot)
         return slot
 
-    def cleanup(self, *, delete_branch: bool = False) -> None:
-        self.manager.hook_task_clean_ensure('pre-cleanup')
+    def remove_safe_ensure(self) -> None:
+        self.manager.hook_task_clean_ensure('pre-remove')
+
+        if self.worktree_path.exists() and not self.manager.worktree_clean(self.worktree_path):
+            raise click.ClickException(
+                f'Commit or stash changes in {self.worktree_path} before '
+                f'removing {self.branch_name}.',
+            )
+
+        if not self.branch_exists():
+            return
+
+        target_refs: list[str] = []
+        if upstream_branch := self.manager.branch_upstream_name(self.branch_name):
+            target_refs.append(upstream_branch)
+        if source_branch := self.source_branch_recorded():
+            target_refs.append(source_branch)
+
+        target_refs = list(dict.fromkeys(target_refs))
+        if any(
+            self.manager.branch_merged_into(self.branch_name, target_ref)
+            for target_ref in target_refs
+        ):
+            return
+
+        compare_target = ', '.join(target_refs) if target_refs else 'an upstream or source branch'
+        raise click.ClickException(
+            f'Branch {self.branch_name} has commits that have not landed in {compare_target}; '
+            'merge them first or use --force.',
+        )
+
+    def remove(self, *, force: bool = False) -> None:
+        if not force:
+            self.remove_safe_ensure()
+
         slot = self.slot()
-        self.hook_run('pre-cleanup', slot=slot)
+        self.hook_run('pre-remove', slot=slot)
 
         worktree_registered = self.manager.worktree_registered(self.worktree_path)
         if worktree_registered and self.worktree_path.exists():
-            self.manager.worktree_remove(self.worktree_path)
+            self.manager.worktree_remove(self.worktree_path, force=force)
         elif self.worktree_path.exists():
             shutil.rmtree(self.worktree_path)
 
         if worktree_registered:
             self.manager.worktree_prune()
 
-        if delete_branch and self.branch_exists():
-            self.manager.branch_delete(self.branch_name)
+        if self.branch_exists():
+            self.manager.branch_delete(self.branch_name, force=force)
 
         self.manager.slot_release(self.ident)
 
     def merge_from(self) -> str:
-        target_branch = self.manager.non_agent_branch_current_ensure()
+        target_branch = self.manager.non_abra_branch_current_ensure()
         if not self.branch_exists():
             raise click.ClickException(f'Branch {self.branch_name} does not exist.')
 

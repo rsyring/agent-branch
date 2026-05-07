@@ -14,7 +14,8 @@ class TestMain:
         assert 'create' in result.output
         assert 'status' in result.output
         assert 'merge-from' in result.output
-        assert 'cleanup' in result.output
+        assert 'remove' in result.output
+        assert 'cleanup' not in result.output
 
     def test_merge_from_reports_success(self, tmp_path):
         runner = CliRunner()
@@ -30,4 +31,20 @@ class TestMain:
 
         assert result.exit_code == 0
         merge_from.assert_called_once_with()
-        assert result.output == 'Merged agent/demo into feature/demo.\n'
+        assert result.output == 'Merged abra/demo into feature/demo.\n'
+
+    def test_remove_passes_force_flag(self, tmp_path):
+        runner = CliRunner()
+        repo_root = tmp_path / 'repo'
+        repo_root.mkdir()
+        manager = BranchManager(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
+
+        with (
+            patch.object(BranchManager, 'current', return_value=manager),
+            patch.object(BranchWorkspace, 'remove') as remove_,
+        ):
+            result = runner.invoke(main, ['remove', 'demo', '--force'])
+
+        assert result.exit_code == 0
+        remove_.assert_called_once_with(force=True)
+        assert result.output == 'Removed demo.\n'
