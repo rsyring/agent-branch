@@ -60,3 +60,14 @@ easily get the app running.
   your mocks setup. DO exercise real application code and realistic data flows. DO mock
   boundaries, not behavior: replace external dependencies sparingly, but let the code
   under test run through real logic and meaningful integrations.
+
+
+## Ruff command sequence
+
+A full ruff check should be:
+
+```
+ruff format && ruff check --fix --extend-fixable F401 && ruff format
+```
+
+To avoid erronous errors from the check that the format will fix.
