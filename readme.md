@@ -13,6 +13,10 @@ Its main use case is multi-tree agentic development.
   - Creates a worktree next to the base repo named `<base-repo>.<ident>`
   - Creates a git branch for that worktree at `abra/<ident>`
   - Runs the `post-create` hook inside the new worktree repository
+- `abra run-hook <ident> <hook-ident> [<hook-ident> ...]`
+  - Re-runs one or more configured hooks in an existing abra worktree
+  - Runs them in the order given
+  - Useful when doing iterative development on hook scripts
 - `abra status`: shows existing abra worktrees
 - `abra merge-from <ident>`
   - Fast-forwards the current branch from `abra/<ident>`
@@ -29,6 +33,10 @@ configuration, setup, and teardown.
 
 - `abra-post-create`: runs after create in the worktree repo
 - `abra-pre-remove`: runs before remove in the worktree repo
+
+For hook iteration, `abra run-hook <ident> post-create` reruns the existing hook in-place
+without rechecking branch/worktree creation. Multiple hook-ident values can be passed and
+are run in order.
 
 When hooks run, `abra` provides these environment variables to the tasks:
 

@@ -165,6 +165,14 @@ class BranchWorkspace:
             return entry.slot
         return None
 
+    def slot_ensure(self) -> int:
+        if (slot := self.slot()) is not None:
+            return slot
+
+        raise click.ClickException(
+            f'No slot recorded for {self.ident}. Run `abra create {self.ident}` first.',
+        )
+
     def source_branch_recorded(self) -> str | None:
         if entry := self.state_entry():
             return entry.source_branch
@@ -254,6 +262,30 @@ class BranchWorkspace:
 
         self.hooks.task_run(task_name, cwd=self.worktree_path, env=self.hook_env(slot=slot))
         return True
+
+    def hook_run_ensure(self, event: str) -> int:
+        from abra.hooks import hook_task_name
+
+        assert self.hooks is not None
+        if event not in self.repo.config.hook_events:
+            raise click.ClickException(f'Unsupported hook event: {event}')
+
+        if not self.worktree_path.exists():
+            raise click.ClickException(
+                f'Worktree {self.worktree_path} does not exist. '
+                f'Run `abra create {self.ident}` first.',
+            )
+
+        slot = self.slot_ensure()
+        self.hooks.trust_worktree(self.worktree_path)
+        task_name = hook_task_name(event)
+        if not self.hooks.task_exists(task_name, cwd=self.worktree_path):
+            raise click.ClickException(
+                f'Hook task {task_name} is not defined in {self.worktree_path}.',
+            )
+
+        self.hooks.task_run(task_name, cwd=self.worktree_path, env=self.hook_env(slot=slot))
+        return slot
 
     def create(self, *, base_branch: str | None = None) -> int:
         assert self.hooks is not None

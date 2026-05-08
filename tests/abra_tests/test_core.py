@@ -58,6 +58,47 @@ class TestBranchWorkspaceHooks:
             'ABRA_SLOT': '3',
         }
 
+    def test_run_hook_uses_existing_slot(self, tmp_path):
+        repo_root = tmp_path / 'repo'
+        repo_root.mkdir()
+        repo = GitRepo(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
+        state = StateStore(repo.config.state_path)
+        workspace = BranchWorkspace('demo', repo=repo, state=state)
+        state.slot_allocate('demo', source_branch='main')
+        workspace.worktree_path.mkdir()
+
+        with (
+            patch.object(workspace.hooks.__class__, 'trust_worktree') as trust_worktree,
+            patch.object(
+                workspace.hooks.__class__,
+                'task_exists',
+                return_value=True,
+            ) as task_exists,
+            patch.object(workspace.hooks.__class__, 'task_run') as task_run,
+        ):
+            slot = workspace.hook_run_ensure('post-create')
+
+        assert slot == 1
+        trust_worktree.assert_called_once_with(workspace.worktree_path)
+        task_exists.assert_called_once_with('abra-post-create', cwd=workspace.worktree_path)
+        task_run.assert_called_once_with(
+            'abra-post-create',
+            cwd=workspace.worktree_path,
+            env={'ABRA_IDENT': 'demo', 'ABRA_BRANCH': 'abra/demo', 'ABRA_SLOT': '1'},
+        )
+
+    def test_run_hook_requires_slot(self, tmp_path):
+        repo_root = tmp_path / 'repo'
+        repo_root.mkdir()
+        workspace = BranchWorkspace(
+            'demo',
+            repo=GitRepo(repo_root=repo_root, config=ProjectConfig.defaults(repo_root)),
+        )
+        workspace.worktree_path.mkdir()
+
+        with pytest.raises(click.ClickException, match='Run `abra create demo` first'):
+            workspace.hook_run_ensure('post-create')
+
     def test_remove_releases_slot(self, tmp_path):
         repo_root = tmp_path / 'repo'
         repo_root.mkdir()
