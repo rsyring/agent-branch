@@ -82,4 +82,4 @@ class TestHookRunner:
         with patch.object(HookRunner, 'hook_task_clean_ensure') as hook_task_clean_ensure:
             hooks.hook_tasks_clean_ensure()
 
-        assert hook_task_clean_ensure.call_args_list == [call('post-create'), call('pre-remove')]
+        assert hook_task_clean_ensure.call_args_list == [call('post-create'), call('pre-teardown')]

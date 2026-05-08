@@ -99,7 +99,7 @@ class TestBranchWorkspaceHooks:
         with pytest.raises(click.ClickException, match='Run `abra create demo` first'):
             workspace.hook_run_ensure('post-create')
 
-    def test_remove_releases_slot(self, tmp_path):
+    def test_teardown_releases_slot(self, tmp_path):
         repo_root = tmp_path / 'repo'
         repo_root.mkdir()
         repo = GitRepo(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
@@ -112,11 +112,11 @@ class TestBranchWorkspaceHooks:
             patch.object(GitRepo, 'worktree_registered', return_value=False),
             patch.object(BranchWorkspace, 'branch_exists', return_value=False),
         ):
-            workspace.remove(force=True)
+            workspace.teardown(force=True)
 
         assert state.load() == []
 
-    def test_pre_remove_runs_before_worktree_cleanup(self, tmp_path):
+    def test_pre_teardown_runs_before_worktree_cleanup(self, tmp_path):
         repo_root = tmp_path / 'repo'
         repo_root.mkdir()
         repo = GitRepo(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
@@ -138,12 +138,12 @@ class TestBranchWorkspaceHooks:
             patch.object(StateStore, 'slot_release') as slot_release,
             patch.object(BranchWorkspace, 'branch_exists', return_value=False),
         ):
-            workspace.remove(force=True)
+            workspace.teardown(force=True)
 
-        assert calls == ['hook:pre-remove:7', 'registered']
+        assert calls == ['hook:pre-teardown:7', 'registered']
         slot_release.assert_called_once_with('demo')
 
-    def test_remove_refuses_dirty_pre_remove_hook(self, tmp_path):
+    def test_teardown_refuses_dirty_pre_teardown_hook(self, tmp_path):
         repo_root = tmp_path / 'repo'
         repo_root.mkdir()
         workspace = BranchWorkspace(
@@ -155,17 +155,17 @@ class TestBranchWorkspaceHooks:
             patch.object(
                 workspace.hooks.__class__,
                 'hook_task_clean_ensure',
-                side_effect=click.ClickException('dirty pre-remove hook'),
+                side_effect=click.ClickException('dirty pre-teardown hook'),
             ) as hook_task_clean_ensure,
             patch.object(BranchWorkspace, 'hook_run') as hook_run,
-            pytest.raises(click.ClickException, match='dirty pre-remove hook'),
+            pytest.raises(click.ClickException, match='dirty pre-teardown hook'),
         ):
-            workspace.remove()
+            workspace.teardown()
 
-        hook_task_clean_ensure.assert_called_once_with('pre-remove')
+        hook_task_clean_ensure.assert_called_once_with('pre-teardown')
         hook_run.assert_not_called()
 
-    def test_force_skips_remove_safety_checks(self, tmp_path):
+    def test_force_skips_teardown_safety_checks(self, tmp_path):
         repo_root = tmp_path / 'repo'
         repo_root.mkdir()
         workspace = BranchWorkspace(
@@ -174,18 +174,18 @@ class TestBranchWorkspaceHooks:
         )
 
         with (
-            patch.object(BranchWorkspace, 'remove_safe_ensure') as remove_safe_ensure,
+            patch.object(BranchWorkspace, 'teardown_safe_ensure') as teardown_safe_ensure,
             patch.object(BranchWorkspace, 'hook_run', return_value=False),
             patch.object(GitRepo, 'worktree_registered', return_value=False),
             patch.object(BranchWorkspace, 'branch_exists', return_value=False),
         ):
-            workspace.remove(force=True)
+            workspace.teardown(force=True)
 
-        remove_safe_ensure.assert_not_called()
+        teardown_safe_ensure.assert_not_called()
 
 
-class TestBranchWorkspaceRemoveGuards:
-    def test_allows_remove_when_commits_landed_in_recorded_source_branch(self, tmp_path):
+class TestBranchWorkspaceTeardownGuards:
+    def test_allows_teardown_when_commits_landed_in_recorded_source_branch(self, tmp_path):
         repo_root = tmp_path / 'repo'
         repo_root.mkdir()
         repo = GitRepo(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
@@ -199,11 +199,11 @@ class TestBranchWorkspaceRemoveGuards:
             patch.object(GitRepo, 'branch_upstream_name', return_value=None),
             patch.object(GitRepo, 'branch_merged_into', return_value=True) as branch_merged_into,
         ):
-            workspace.remove_safe_ensure()
+            workspace.teardown_safe_ensure()
 
         branch_merged_into.assert_called_once_with('abra/demo', 'feature/demo')
 
-    def test_rejects_remove_when_commits_have_not_landed_anywhere(self, tmp_path):
+    def test_rejects_teardown_when_commits_have_not_landed_anywhere(self, tmp_path):
         repo_root = tmp_path / 'repo'
         repo_root.mkdir()
         repo = GitRepo(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
@@ -218,9 +218,9 @@ class TestBranchWorkspaceRemoveGuards:
             patch.object(GitRepo, 'branch_merged_into', return_value=False),
             pytest.raises(click.ClickException, match='merge them first or use --force'),
         ):
-            workspace.remove_safe_ensure()
+            workspace.teardown_safe_ensure()
 
-    def test_rejects_remove_when_worktree_has_uncommitted_changes(self, tmp_path):
+    def test_rejects_teardown_when_worktree_has_uncommitted_changes(self, tmp_path):
         repo_root = tmp_path / 'repo'
         repo_root.mkdir()
         repo = GitRepo(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
@@ -232,7 +232,7 @@ class TestBranchWorkspaceRemoveGuards:
             patch.object(GitRepo, 'worktree_clean', return_value=False),
             pytest.raises(click.ClickException, match='Commit or stash changes'),
         ):
-            workspace.remove_safe_ensure()
+            workspace.teardown_safe_ensure()
 
 
 class TestBranchWorkspaceCreate:

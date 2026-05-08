@@ -9,7 +9,7 @@ import click
 
 DEFAULT_BRANCH_PREFIX = 'abra/'
 DEFAULT_WORKTREE_TEMPLATE = '{project_base}.{ident}'
-DEFAULT_HOOK_EVENTS = ('post-create', 'pre-remove')
+DEFAULT_HOOK_EVENTS = ('post-create', 'pre-teardown')
 
 
 def default_state_path(repo_root: Path) -> Path:

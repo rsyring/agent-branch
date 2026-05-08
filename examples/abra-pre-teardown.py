@@ -1,6 +1,6 @@
 #!/usr/bin/env -S uv run --script
 """
-Example pre-remove hook that:
+Example pre-teardown hook that:
 
 - Runs `docker compose down --remove-orphans --volumes`
 
@@ -16,11 +16,11 @@ import click
 
 
 @dataclass(frozen=True)
-class PreRemoveConfig:
+class PreTeardownConfig:
     worktree_dpath: Path
 
     @classmethod
-    def current(cls) -> PreRemoveConfig:
+    def current(cls) -> PreTeardownConfig:
         return cls(worktree_dpath=Path.cwd().resolve())
 
     def sub_run(self, *args: str) -> subprocess.CompletedProcess:
@@ -32,9 +32,9 @@ class PreRemoveConfig:
 
 @click.command()
 def main() -> None:
-    """Example hook to tear down compose resources before remove."""
+    """Example hook to tear down compose resources before teardown."""
 
-    PreRemoveConfig.current().run()
+    PreTeardownConfig.current().run()
 
 
 if __name__ == '__main__':

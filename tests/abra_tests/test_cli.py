@@ -18,17 +18,17 @@ class TestMain:
         assert 'run-hook' in result.output
         assert 'status' in result.output
         assert 'merge-from' in result.output
-        assert 'remove' in result.output
+        assert 'teardown' in result.output
         assert 'Create or reuse the abra workspace for IDENT.' in result.output
         assert 'Run one or more hook identifiers again for IDENT.' in result.output
         assert 'Show active abra workspaces for the current repo.' in result.output
         assert 'Fast-forward merge abra/IDENT into the current non-abra branch.' in result.output
-        assert 'Remove the abra workspace for IDENT, delete the branch, and...' in result.output
+        assert 'teardown    Tear down the abra workspace for IDENT' in result.output
         assert (
             'This is especially useful while iterating on a hook like `post-create`.'
             not in result.output
         )
-        assert 'By default this refuses to remove dirty or unmerged work.' not in result.output
+        assert 'By default this refuses to tear down dirty or unmerged work.' not in result.output
         assert 'cleanup' not in result.output
 
     def test_create_help_shows_workspace_details(self):
@@ -58,16 +58,14 @@ class TestMain:
         assert 'Show active abra workspaces for the current repo.' in result.output
         assert 'Displays the state file path' in result.output
 
-    def test_remove_help_shows_remove_details(self):
-        result = CliRunner().invoke(main, ['remove', '--help'])
+    def test_teardown_help_shows_teardown_details(self):
+        result = CliRunner().invoke(main, ['teardown', '--help'])
 
         assert result.exit_code == 0
-        assert (
-            'Remove the abra workspace for IDENT, delete the branch, and release its slot.'
-            in result.output
-        )
-        assert 'If the workspace defines `abra-pre-remove`' in result.output
-        assert 'By default this refuses to remove dirty or unmerged work.' in result.output
+        assert 'Tear down the abra workspace for IDENT' in result.output
+        assert 'release its' in result.output
+        assert 'If the workspace defines `abra-pre-teardown`' in result.output
+        assert 'By default this refuses to tear down dirty or unmerged work.' in result.output
 
     def test_create_passes_base_branch(self, tmp_path):
         runner = CliRunner()
@@ -98,12 +96,12 @@ class TestMain:
             patch.object(GitRepo, 'current', return_value=repo),
             patch.object(BranchWorkspace, 'hook_run_ensure', return_value=2) as hook_run_ensure,
         ):
-            result = runner.invoke(main, ['run-hook', 'demo', 'post-create', 'pre-remove'])
+            result = runner.invoke(main, ['run-hook', 'demo', 'post-create', 'pre-teardown'])
 
         assert result.exit_code == 0
-        assert hook_run_ensure.call_args_list == [call('post-create'), call('pre-remove')]
+        assert hook_run_ensure.call_args_list == [call('post-create'), call('pre-teardown')]
         assert (
-            result.output == 'Ran post-create, pre-remove '
+            result.output == 'Ran post-create, pre-teardown '
             f'for demo at {repo.config.worktree_path("demo")} (slot 2).\n'
         )
 
@@ -111,7 +109,7 @@ class TestMain:
         result = CliRunner().invoke(main, ['run-hook', 'demo', 'not-a-hook'])
 
         assert result.exit_code != 0
-        assert "Invalid value for '{post-create|pre-remove}...'" in result.output
+        assert "Invalid value for '{post-create|pre-teardown}...'" in result.output
 
     def test_merge_from_reports_success(self, tmp_path):
         runner = CliRunner()
@@ -129,7 +127,7 @@ class TestMain:
         merge_from.assert_called_once_with()
         assert result.output == 'Merged abra/demo into feature/demo.\n'
 
-    def test_remove_passes_force_flag(self, tmp_path):
+    def test_teardown_passes_force_flag(self, tmp_path):
         runner = CliRunner()
         repo_root = tmp_path / 'repo'
         repo_root.mkdir()
@@ -137,10 +135,10 @@ class TestMain:
 
         with (
             patch.object(GitRepo, 'current', return_value=repo),
-            patch.object(BranchWorkspace, 'remove') as remove_,
+            patch.object(BranchWorkspace, 'teardown') as teardown,
         ):
-            result = runner.invoke(main, ['remove', 'demo', '--force'])
+            result = runner.invoke(main, ['teardown', 'demo', '--force'])
 
         assert result.exit_code == 0
-        remove_.assert_called_once_with(force=True)
-        assert result.output == 'Removed demo.\n'
+        teardown.assert_called_once_with(force=True)
+        assert result.output == 'Tore down demo.\n'

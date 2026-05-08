@@ -113,23 +113,23 @@ def merge_from(ident: str) -> None:
     click.echo(f'Merged {workspace.branch_name} into {target_branch}.')
 
 
-@main.command(name='remove')
+@main.command(name='teardown')
 @click.argument('ident')
 @click.option(
     '--force',
     'force_',
     is_flag=True,
     default=False,
-    help='Skip remove safety guards and delete the worktree and branch anyway.',
+    help='Skip teardown safety guards and delete the worktree and branch anyway.',
 )
-def remove_(ident: str, force_: bool) -> None:
+def teardown_(ident: str, force_: bool) -> None:
     """
-    Remove the abra workspace for IDENT, delete the branch, and release its slot.
+    Tear down the abra workspace for IDENT, delete the branch, and release its slot.
 
-    If the workspace defines `abra-pre-remove`, abra runs it before deleting anything.
+    If the workspace defines `abra-pre-teardown`, abra runs it before deleting anything.
 
-    By default this refuses to remove dirty or unmerged work. Use `--force` to override.
+    By default this refuses to tear down dirty or unmerged work. Use `--force` to override.
     """
 
-    BranchWorkspace(ident, repo=GitRepo.current()).remove(force=force_)
-    click.echo(f'Removed {ident}.')
+    BranchWorkspace(ident, repo=GitRepo.current()).teardown(force=force_)
+    click.echo(f'Tore down {ident}.')

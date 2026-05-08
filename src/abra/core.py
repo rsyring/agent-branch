@@ -300,14 +300,14 @@ class BranchWorkspace:
         self.hook_run('post-create', slot=slot)
         return slot
 
-    def remove_safe_ensure(self) -> None:
+    def teardown_safe_ensure(self) -> None:
         assert self.hooks is not None
-        self.hooks.hook_task_clean_ensure('pre-remove')
+        self.hooks.hook_task_clean_ensure('pre-teardown')
 
         if self.worktree_path.exists() and not self.repo.worktree_clean(self.worktree_path):
             raise click.ClickException(
                 f'Commit or stash changes in {self.worktree_path} before '
-                f'removing {self.branch_name}.',
+                f'tearing down {self.branch_name}.',
             )
 
         if not self.branch_exists():
@@ -331,13 +331,13 @@ class BranchWorkspace:
             'merge them first or use --force.',
         )
 
-    def remove(self, *, force: bool = False) -> None:
+    def teardown(self, *, force: bool = False) -> None:
         assert self.state is not None
         if not force:
-            self.remove_safe_ensure()
+            self.teardown_safe_ensure()
 
         slot = self.slot()
-        self.hook_run('pre-remove', slot=slot)
+        self.hook_run('pre-teardown', slot=slot)
 
         worktree_registered = self.repo.worktree_registered(self.worktree_path)
         if worktree_registered and self.worktree_path.exists():

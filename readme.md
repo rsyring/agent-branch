@@ -31,10 +31,10 @@ or "1573-launch-rocket".
   - Intended to be used by the origin repo to pull changes in from a workspace
   - Fast-forward only, on the assumption that workspace branches have been rebased onto
     the origin repo/branch
-- `abra remove <ident> [--force]`
-  - Runs the `pre-remove` hook
+- `abra teardown <ident> [--force]`
+  - Runs the `pre-teardown` hook
   - Deletes the workspace worktree and branch
-  - Does not remove uncommitted or unmerged changes without `--force`
+  - Refuses to tear down uncommitted or unmerged work without `--force`
 
 ## Hooks
 
@@ -45,8 +45,8 @@ and teardown.
   - Runs after create in the workspace repo
   - Likely runs **before** the repo's environment is set up, so this hook script usually
     needs to be self-contained
-- `abra-pre-remove`
-  - Runs before remove in the workspace repo
+- `abra-pre-teardown`
+  - Runs before teardown in the workspace repo
 
 For hook iteration, `abra run-hook <ident> post-create` reruns the existing hook in-place
 without rechecking workspace creation. Multiple hook-ident values can be passed and are

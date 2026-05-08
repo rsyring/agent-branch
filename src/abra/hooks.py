@@ -13,8 +13,8 @@ from abra.utils import sub_run
 def hook_task_name(event: str) -> str:
     if event == 'post-create':
         return 'abra-post-create'
-    if event == 'pre-remove':
-        return 'abra-pre-remove'
+    if event == 'pre-teardown':
+        return 'abra-pre-teardown'
     return f'abra-on-{event}'
 
 
