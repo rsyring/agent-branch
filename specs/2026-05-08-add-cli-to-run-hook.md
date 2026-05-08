@@ -13,13 +13,14 @@ If not, what do you suggest for cli improvements to help with this scenario?
 
 ## Findings
 
-- `create` already reuses the existing branch, worktree, and slot.
-- `create` is not a good hook-iteration loop because it also reruns branch/worktree checks
-  and refuses dirty hook task files before continuing.
+- `create` already reuses the existing workspace branch, worktree, and slot.
+- `create` is not a good hook-iteration loop because it also reruns workspace checks and
+  refuses dirty hook task files before continuing.
 
 ## Decision
 
-- Add `run-hook <ident> <hook-ident> [<hook-ident> ...]` for existing abra worktrees.
+- Use **workspace** as the user-facing name for the thing identified by `<ident>`.
+- Add `run-hook <ident> <hook-ident> [<hook-ident> ...]` for existing abra workspaces.
 - It reruns a configured hook with the same `ABRA_*` environment, including the recorded
   slot.
 - `hook-ident` values are validated by the CLI with `click.Choice`.

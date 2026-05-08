@@ -13,17 +13,17 @@ class TestMain:
         result = CliRunner().invoke(main, ['--help'])
 
         assert result.exit_code == 0
-        assert 'Manage isolated git worktrees for branch-based abra workflows.' in result.output
+        assert 'A CLI tool to ease management of abra workspaces' in result.output
         assert 'create' in result.output
         assert 'run-hook' in result.output
         assert 'status' in result.output
         assert 'merge-from' in result.output
         assert 'remove' in result.output
-        assert 'Create or reuse the branch worktree for IDENT.' in result.output
+        assert 'Create or reuse the abra workspace for IDENT.' in result.output
         assert 'Run one or more hook identifiers again for IDENT.' in result.output
-        assert 'Show active branch worktrees for the current repo.' in result.output
+        assert 'Show active abra workspaces for the current repo.' in result.output
         assert 'Fast-forward merge abra/IDENT into the current non-abra branch.' in result.output
-        assert 'Remove the worktree for IDENT, delete the branch, and release...' in result.output
+        assert 'Remove the abra workspace for IDENT, delete the branch, and...' in result.output
         assert (
             'This is especially useful while iterating on a hook like `post-create`.'
             not in result.output
@@ -31,12 +31,12 @@ class TestMain:
         assert 'By default this refuses to remove dirty or unmerged work.' not in result.output
         assert 'cleanup' not in result.output
 
-    def test_create_help_shows_worktree_details(self):
+    def test_create_help_shows_workspace_details(self):
         result = CliRunner().invoke(main, ['create', '--help'])
 
         assert result.exit_code == 0
-        assert 'Create or reuse the branch worktree for IDENT.' in result.output
-        assert 'If the worktree defines an `abra-post-create` mise task' in result.output
+        assert 'Create or reuse the abra workspace for IDENT.' in result.output
+        assert 'If the workspace defines an `abra-post-create` mise task' in result.output
 
     def test_run_hook_help_shows_rerun_details(self):
         result = CliRunner().invoke(main, ['run-hook', '--help'])
@@ -45,6 +45,7 @@ class TestMain:
         assert 'Run one or more hook identifiers again for IDENT.' in result.output
         assert 'reuse the' in result.output
         assert 'recorded `ABRA_IDENT`, `ABRA_BRANCH`, and `ABRA_SLOT` values.' in result.output
+        assert 'existing abra workspace' in result.output
         assert (
             'This is especially useful while iterating on a hook like `post-create`.'
             in result.output
@@ -54,7 +55,7 @@ class TestMain:
         result = CliRunner().invoke(main, ['status', '--help'])
 
         assert result.exit_code == 0
-        assert 'Show active branch worktrees for the current repo.' in result.output
+        assert 'Show active abra workspaces for the current repo.' in result.output
         assert 'Displays the state file path' in result.output
 
     def test_remove_help_shows_remove_details(self):
@@ -62,10 +63,10 @@ class TestMain:
 
         assert result.exit_code == 0
         assert (
-            'Remove the worktree for IDENT, delete the branch, and release its slot.'
+            'Remove the abra workspace for IDENT, delete the branch, and release its slot.'
             in result.output
         )
-        assert 'If the worktree defines `abra-pre-remove`' in result.output
+        assert 'If the workspace defines `abra-pre-remove`' in result.output
         assert 'By default this refuses to remove dirty or unmerged work.' in result.output
 
     def test_create_passes_base_branch(self, tmp_path):

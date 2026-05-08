@@ -1,48 +1,62 @@
-# AgentBranch
+# Agent Branch (abra)
 
 [![nox](https://github.com/rsyring/agent-branch/actions/workflows/nox.yaml/badge.svg)](https://github.com/rsyring/agent-branch/actions/workflows/nox.yaml)
 
-`abra` is a CLI tool for simplifying the creation of git worktrees for branch-based
+`abra` is a CLI tool for simplifying the management of git worktrees for branch-based
 parallel development.
+
+Abra uses "workspace" as the term to encompass the repo, worktree, branches, and other
+resources associated with its management activities.
 
 Its main use case is multi-tree agentic development.
 
 ## Usage
 
+Note: `<ident>` is the workspace identifier. It should be slug-like, e.g. "a-cool-feature"
+or "1573-launch-rocket".
+
 - `abra create <ident> [--base-branch]`
-  - Creates a worktree next to the base repo named `<base-repo>.<ident>`
-  - Creates a git branch for that worktree at `abra/<ident>`
-  - Runs the `post-create` hook inside the new worktree repository
+  - Creates or reuses a workspace with the given `<ident>`
+  - Uses a sibling worktree named `<base-repo>.<ident>`
+  - Uses a git branch at `abra/<ident>`
+  - Runs the `post-create` hook inside the workspace repo
 - `abra run-hook <ident> <hook-ident> [<hook-ident> ...]`
-  - Re-runs one or more configured hooks in an existing abra worktree
+  - Re-runs one or more hooks in an existing abra workspace
   - Runs them in the order given
   - Useful when doing iterative development on hook scripts
-- `abra status`: shows existing abra worktrees
+- `abra status`: shows existing workspaces
 - `abra merge-from <ident>`
   - Fast-forwards the current branch from `abra/<ident>`
   - Runs only from non-abra branches
+  - Intended to be used by the origin repo to pull changes in from a workspace
+  - Fast-forward only, on the assumption that workspace branches have been rebased onto
+    the origin repo/branch
 - `abra remove <ident> [--force]`
-  - Does not remove uncommitted or unmerged changes without `--force`
   - Runs the `pre-remove` hook
-  - Deletes the worktree repository and branch
+  - Deletes the workspace worktree and branch
+  - Does not remove uncommitted or unmerged changes without `--force`
 
 ## Hooks
 
-`abra` uses `mise` tasks as hooks to support customizing worktree repository
-configuration, setup, and teardown.
+`abra` uses `mise` tasks as hooks to support customizing workspace configuration, setup,
+and teardown.
 
-- `abra-post-create`: runs after create in the worktree repo
-- `abra-pre-remove`: runs before remove in the worktree repo
+- `abra-post-create`
+  - Runs after create in the workspace repo
+  - Likely runs **before** the repo's environment is set up, so this hook script usually
+    needs to be self-contained
+- `abra-pre-remove`
+  - Runs before remove in the workspace repo
 
 For hook iteration, `abra run-hook <ident> post-create` reruns the existing hook in-place
-without rechecking branch/worktree creation. Multiple hook-ident values can be passed and
-are run in order.
+without rechecking workspace creation. Multiple hook-ident values can be passed and are
+run in order.
 
 When hooks run, `abra` provides these environment variables to the tasks:
 
-- `ABRA_IDENT`: the `<ident>` provided to `create`
+- `ABRA_IDENT`: the workspace ident provided to `create`
 - `ABRA_BRANCH`: the full git branch, i.e. `abra/<ident>`
-- `ABRA_SLOT`: an integer that will be unique among all existing abra worktrees
+- `ABRA_SLOT`: an integer that will be unique among all existing abra workspaces
 
 `abra` intentionally stays app-agnostic. Hook tasks should translate the slot into
 app-specific ports, containers, databases, or other local resources to avoid collisions.

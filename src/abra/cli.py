@@ -12,10 +12,10 @@ from abra.git import GitRepo
 @click.group()
 def main() -> None:
     """
-    Manage isolated git worktrees for branch-based abra workflows.
+    A CLI tool to ease management of abra workspaces for branch-based parallel development.
 
-    Abra uses `abra/<ident>` branches, sibling worktrees, reusable numeric slots, and
-    optional hook tasks while staying app-agnostic.
+    An abra workspace combines an `abra/<ident>` branch, a sibling worktree, a reusable
+    numeric slot, and optional hook tasks while staying app-agnostic.
     """
 
 
@@ -29,12 +29,12 @@ def main() -> None:
 )
 def create(ident: str, base_branch: str | None) -> None:
     """
-    Create or reuse the branch worktree for IDENT.
+    Create or reuse the abra workspace for IDENT.
 
-    IDENT becomes the branch suffix and worktree suffix. For example, `create demo` uses
-    `abra/demo` and `<repo-parent>/<repo-name>.demo`.
+    IDENT names the workspace. For example, `create demo` uses `abra/demo` and
+    `<repo-parent>/<repo-name>.demo`.
 
-    If the worktree defines an `abra-post-create` mise task, abra runs it with
+    If the workspace defines an `abra-post-create` mise task, abra runs it with
     `ABRA_IDENT`, `ABRA_BRANCH`, and `ABRA_SLOT`.
     """
 
@@ -55,7 +55,7 @@ def run_hook(ident: str, hook_idents: tuple[str, ...]) -> None:
     """
     Run one or more hook identifiers again for IDENT.
 
-    Hooks run for an existing abra worktree in the order given and reuse the recorded
+    Hooks run for an existing abra workspace in the order given and reuse the recorded
     `ABRA_IDENT`, `ABRA_BRANCH`, and `ABRA_SLOT` values.
 
     This is especially useful while iterating on a hook like `post-create`.
@@ -75,9 +75,10 @@ def run_hook(ident: str, hook_idents: tuple[str, ...]) -> None:
 @main.command()
 def status() -> None:
     """
-    Show active branch worktrees for the current repo.
+    Show active abra workspaces for the current repo.
 
-    Displays the state file path and whether each recorded worktree and branch still exists.
+    Displays the state file path and whether each recorded workspace worktree and branch
+    still exists.
     """
 
     repo = GitRepo.current()
@@ -85,7 +86,7 @@ def status() -> None:
     click.echo(f'State file: {repo.config.state_path}')
     entries = state.load()
     if not entries:
-        click.echo('No active branch worktrees found.')
+        click.echo('No active abra workspaces found.')
         return
 
     rows = [BranchWorkspace(entry.ident, repo=repo, state=state).status_row() for entry in entries]
@@ -123,9 +124,9 @@ def merge_from(ident: str) -> None:
 )
 def remove_(ident: str, force_: bool) -> None:
     """
-    Remove the worktree for IDENT, delete the branch, and release its slot.
+    Remove the abra workspace for IDENT, delete the branch, and release its slot.
 
-    If the worktree defines `abra-pre-remove`, abra runs it before deleting anything.
+    If the workspace defines `abra-pre-remove`, abra runs it before deleting anything.
 
     By default this refuses to remove dirty or unmerged work. Use `--force` to override.
     """
