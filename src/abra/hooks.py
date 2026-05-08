@@ -5,6 +5,7 @@ from pathlib import Path
 
 import click
 
+from abra.config import ProjectConfig, find_repo_root
 from abra.git import GitRepo
 from abra.utils import sub_run
 
@@ -20,6 +21,14 @@ def hook_task_name(event: str) -> str:
 @dataclass(frozen=True)
 class HookRunner:
     repo: GitRepo
+
+    def task_repo(self, task_fpath: Path) -> GitRepo | None:
+        try:
+            repo_root = find_repo_root(task_fpath)
+        except click.ClickException:
+            return None
+
+        return GitRepo(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
 
     def trust_worktree(self, worktree_path: Path) -> None:
         sub_run('mise', 'trust', worktree_path, capture=True)
@@ -61,11 +70,13 @@ class HookRunner:
         task_name = hook_task_name(event)
         if not (task_fpath := self.task_file_path(task_name, cwd=self.repo.repo_root)):
             return
-        if not self.repo.path_dirty(task_fpath):
+
+        task_repo = self.task_repo(task_fpath)
+        if task_repo and not task_repo.path_dirty(task_fpath):
             return
 
         try:
-            display_path = task_fpath.relative_to(self.repo.repo_root)
+            display_path = task_fpath.relative_to(task_repo.repo_root) if task_repo else task_fpath
         except ValueError:
             display_path = task_fpath
 
