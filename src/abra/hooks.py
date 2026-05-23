@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import subprocess
 
 import click
 
@@ -64,7 +65,10 @@ class HookRunner:
         return None
 
     def task_run(self, task_name: str, *, cwd: Path, env: dict[str, str] | None = None) -> None:
-        sub_run('mise', 'run', task_name, cwd=cwd, env=env)
+        try:
+            sub_run('mise', 'run', task_name, cwd=cwd, env=env)
+        except subprocess.CalledProcessError as exc:
+            raise click.exceptions.Exit(exc.returncode) from exc
 
     def hook_task_clean_ensure(self, event: str) -> None:
         task_name = hook_task_name(event)

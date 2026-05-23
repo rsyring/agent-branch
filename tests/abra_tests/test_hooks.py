@@ -1,3 +1,4 @@
+import subprocess
 from unittest.mock import call, patch
 
 import click
@@ -83,3 +84,24 @@ class TestHookRunner:
             hooks.hook_tasks_clean_ensure()
 
         assert hook_task_clean_ensure.call_args_list == [call('post-create'), call('pre-teardown')]
+
+    def test_task_run_aborts_cleanly_when_task_fails(self, tmp_path):
+        repo_root = tmp_path / 'repo'
+        repo_root.mkdir()
+        hooks = HookRunner(
+            repo=GitRepo(repo_root=repo_root, config=ProjectConfig.defaults(repo_root)),
+        )
+
+        with (
+            patch(
+                'abra.hooks.sub_run',
+                side_effect=subprocess.CalledProcessError(
+                    1,
+                    ('mise', 'run', 'abra-post-create'),
+                ),
+            ),
+            pytest.raises(click.exceptions.Exit) as exc,
+        ):
+            hooks.task_run('abra-post-create', cwd=repo_root)
+
+        assert exc.value.exit_code == 1
