@@ -38,3 +38,26 @@ class TestGitRepoBranches:
             repo.branch_ensure('abra/demo', 'financial-planning-intake')
 
         branch_upstream_set.assert_called_once_with('abra/demo', 'financial-planning-intake')
+
+
+class TestGitRepoRefs:
+    def test_ref_exists_captures_stdout(self, tmp_path):
+        repo_root = tmp_path / 'repo'
+        repo_root.mkdir()
+        repo = GitRepo(repo_root=repo_root, config=ProjectConfig.defaults(repo_root))
+
+        with patch('abra.git.sub_run') as sub_run:
+            sub_run.return_value.returncode = 0
+
+            assert repo.ref_exists('main') is True
+
+        sub_run.assert_called_once_with(
+            'git',
+            'rev-parse',
+            '--verify',
+            '--quiet',
+            'main^{commit}',
+            cwd=repo.repo_root,
+            capture=True,
+            returns=(0, 1),
+        )

@@ -102,6 +102,7 @@ class GitRepo:
             '--quiet',
             f'{ref_name}^{{commit}}',
             cwd=self.repo_root,
+            capture=True,
             returns=(0, 1),
         )
         return result.returncode == 0
